@@ -94,7 +94,7 @@ public class CorrectFileWriter {
                             isLineCorrect = chunk.skipValueWrapper();
                             state = ReadingColumnState.VALUE_WRAPPER_SECOND;
                         }
-                        case DELIMITER, NEW_LINE -> {
+                        case DELIMITER -> {
                             isLineCorrect = chunk.skipValueWrapper();
                             state = ReadingColumnState.VALUE_WRAPPER_FIRST;
                         }
@@ -115,7 +115,7 @@ public class CorrectFileWriter {
                             if (newLineInd != -1) {
                                 isLineCorrect = true;
                                 state = ReadingColumnState.DELIMITER;
-                                curLineStart = seekIndexByNewLineBufferIndex(raf, newLineInd);
+                                curLineStart = seekIndexByNewLineBufferIndex(raf, newLineInd, bytesRead, chunk);
                             }
                         }
 
@@ -124,13 +124,12 @@ public class CorrectFileWriter {
 
                     if (isLineCorrect && (state == ReadingColumnState.NEW_LINE ||
                             state == ReadingColumnState.VALUE_WRAPPER_SECOND && isEOF(bytesRead, buffer.length, chunk))) {
-                        long nextLineStart = seekIndexByNewLineBufferIndex(raf, chunk.getCurrentIndex() - 1);
                         raf.seek(curLineStart);
-                        addValidLineToOutputFile(raf, fileWriterChannel);
-                        curLineStart = nextLineStart;
+                        curLineStart = addValidLineToOutputFile(raf, fileWriterChannel);
                         if (!isEOF(bytesRead, buffer.length, chunk)) {
                             raf.seek(curLineStart);
                         }
+                        state = ReadingColumnState.SKIP_UNTIL_NEW_LINE;
                         break;
                     } else if (!isLineCorrect) {
                         state = ReadingColumnState.SKIP_UNTIL_NEW_LINE;
@@ -142,20 +141,22 @@ public class CorrectFileWriter {
         }
     }
 
-    private long seekIndexByNewLineBufferIndex(RandomAccessFile raf, int newLineIndex) throws IOException {
-        return raf.getFilePointer() - BUFFER_SIZE + newLineIndex + 1;
+    private long seekIndexByNewLineBufferIndex(RandomAccessFile raf, long newLineIndex, int bytesRead, ChunkTokenizer chunk) throws IOException {
+        var diff = raf.getFilePointer() - BUFFER_SIZE;
+        return (diff >= 0) ? (diff + newLineIndex + 1) : (raf.length() - bytesRead + chunk.getCurrentIndex());
     }
 
     private boolean isEOF(int bytesRead, int bufferLen, ChunkTokenizer chunk) {
         return bytesRead < bufferLen && !chunk.hasRemainingCharacters();
     }
 
-    private void addValidLineToOutputFile(RandomAccessFile rafReader, FileChannel fileWriterChannel) throws IOException {
+    private long addValidLineToOutputFile(RandomAccessFile rafReader, FileChannel fileWriterChannel) throws IOException {
         var buffer = new byte[BUFFER_SIZE];
         ByteBuffer byteBuffer = ByteBuffer.allocate(BUFFER_SIZE);
         int bytesRead;
         var lineIsEnded = false;
         long delimitersAmount = 0;
+        long filePointerToBufferWithNewLine = rafReader.getFilePointer();
 
         while (!lineIsEnded && (bytesRead = rafReader.read(buffer)) != -1) {
             var chunk = new ChunkTokenizer(new String(buffer, 0, bytesRead));
@@ -164,6 +165,7 @@ public class CorrectFileWriter {
             if (newLineIndex == -1) {
                 byteBuffer.put(buffer, 0, bytesRead);
                 delimitersAmount += chunk.countColumnDelimiters();
+                filePointerToBufferWithNewLine = rafReader.getFilePointer();
             } else {
                 lineIsEnded = true;
                 byteBuffer.put(buffer, 0, newLineIndex + 1);
@@ -179,6 +181,8 @@ public class CorrectFileWriter {
 
         validLinesAmount++;
         maxColumnsAmount = max(maxColumnsAmount, delimitersAmount + 1);
+
+        return filePointerToBufferWithNewLine;
     }
 
     public FileInfo fileInfo() {
