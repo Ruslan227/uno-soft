@@ -1,5 +1,7 @@
 package org.example;
 
+import java.nio.ByteBuffer;
+import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
 
@@ -22,6 +24,26 @@ public class ChunkTokenizer {
 
     public int getCurrentIndex() {
         return curInd;
+    }
+
+    public Optional<Boolean> accumulateColumnValue(ByteBuffer buffer) {
+        if (isNewLine(s.charAt(curInd))) {
+            return Optional.empty();
+        }
+        if (isColumnDelimiter(s.charAt(curInd))) {
+            curInd++;
+            return Optional.of(true);
+        }
+        while (hasRemainingCharacters() && !isColumnDelimiter(s.charAt(curInd)) && !isNewLine(s.charAt(curInd))) {
+            buffer.put((byte) s.charAt(curInd));
+            curInd++;
+        }
+        if (hasRemainingCharacters() && isColumnDelimiter(s.charAt(curInd))) {
+            curInd++;
+            return Optional.of(true);
+        }
+
+        return Optional.of(hasRemainingCharacters() && isNewLine(s.charAt(curInd)));
     }
 
     /**
@@ -101,7 +123,8 @@ public class ChunkTokenizer {
     }
 
     private void abstractSkipLexemesIfPresent(Predicate<Character> predicate) {
-        for (; hasRemainingCharacters() && predicate.test(s.charAt(curInd)); curInd++) {}
+        for (; hasRemainingCharacters() && predicate.test(s.charAt(curInd)); curInd++) {
+        }
     }
 
     public boolean hasRemainingCharacters() {
