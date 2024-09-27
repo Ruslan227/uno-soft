@@ -188,7 +188,4 @@ public class CorrectFileWriter {
     public FileInfo fileInfo() {
         return new FileInfo(validLinesAmount, maxColumnsAmount);
     }
-
-    public record FileInfo(int validLinesAmount, long maxColumnsAmount) {
-    }
 }
