@@ -9,18 +9,12 @@ import java.util.Optional;
 
 import static java.lang.Math.max;
 
-
-public class CorrectFileWriter {
-    private static final int BUFFER_SIZE = 512 * 1024 * 1024;
-    private final String inputFilePath;
-    private final String outputFilePath;
+public class CorrectFileWriter extends AbstractWriter {
     private int validLinesAmount = 0;
     private long maxColumnsAmount = 0;
 
-
     public CorrectFileWriter(String inputFilePath, String outputFilePath) {
-        this.inputFilePath = inputFilePath;
-        this.outputFilePath = outputFilePath;
+        super(inputFilePath, outputFilePath);
     }
 
     private enum ReadingColumnState {
@@ -115,7 +109,7 @@ public class CorrectFileWriter {
                             if (newLineInd != -1) {
                                 isLineCorrect = true;
                                 state = ReadingColumnState.DELIMITER;
-                                curLineStart = seekIndexByNewLineBufferIndex(raf, newLineInd, bytesRead, chunk);
+                                curLineStart = seekIndexByBufferIndex(raf.getFilePointer(), raf.length(), newLineInd, bytesRead, chunk);
                             }
                         }
 
@@ -139,11 +133,6 @@ public class CorrectFileWriter {
         } catch (IOException e) {
             System.err.println(e.getMessage());
         }
-    }
-
-    private long seekIndexByNewLineBufferIndex(RandomAccessFile raf, long newLineIndex, int bytesRead, ChunkTokenizer chunk) throws IOException {
-        var diff = raf.getFilePointer() - BUFFER_SIZE;
-        return (diff >= 0) ? (diff + newLineIndex + 1) : (raf.length() - bytesRead + chunk.getCurrentIndex());
     }
 
     private boolean isEOF(int bytesRead, int bufferLen, ChunkTokenizer chunk) {
@@ -183,6 +172,10 @@ public class CorrectFileWriter {
         maxColumnsAmount = max(maxColumnsAmount, delimitersAmount + 1);
 
         return filePointerToBufferWithNewLine;
+    }
+
+    public String outputFilePath() {
+        return outputFilePath;
     }
 
     public FileInfo fileInfo() {
