@@ -16,6 +16,7 @@ repositories {
 }
 
 dependencies {
+    implementation 'com.google.code.externalsortinginjava:externalsortinginjava:0.6.2'
     testImplementation platform('org.junit:junit-bom:5.10.0')
     testImplementation 'org.junit.jupiter:junit-jupiter'
 }
