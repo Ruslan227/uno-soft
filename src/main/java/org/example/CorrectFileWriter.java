@@ -8,6 +8,7 @@ import java.nio.channels.FileChannel;
 import java.util.Optional;
 
 import static java.lang.Math.max;
+import static org.example.ColumnState.*;
 
 public class CorrectFileWriter extends AbstractWriter {
     private int validLinesAmount = 0;
@@ -17,16 +18,7 @@ public class CorrectFileWriter extends AbstractWriter {
         super(inputFilePath, outputFilePath);
     }
 
-    private enum ReadingColumnState {
-        DELIMITER,
-        VALUE_WRAPPER_FIRST,
-        VALUE,
-        VALUE_WRAPPER_SECOND,
-        NEW_LINE,
-        SKIP_UNTIL_NEW_LINE
-    }
-
-    private Optional<ReadingColumnState> stateByFirstLexeme(ChunkTokenizer chunk) {
+    private Optional<ColumnState> stateByFirstLexeme(ChunkTokenizer chunk) {
         chunk.skipWhitespaceIfPresent();
         var curCode = chunk.get();
 
@@ -35,16 +27,16 @@ public class CorrectFileWriter extends AbstractWriter {
         }
 
         var curSymb = (char) curCode;
-        ReadingColumnState stateResult = null;
+        ColumnState stateResult = null;
 
         if (chunk.isDigit(curSymb)) {
-            stateResult = ReadingColumnState.VALUE;
+            stateResult = VALUE;
         } else if (chunk.isNewLine(curSymb)) {
-            stateResult = ReadingColumnState.NEW_LINE;
+            stateResult = NEW_LINE;
         } else if (chunk.isColumnDelimiter(curSymb)) {
-            stateResult = ReadingColumnState.DELIMITER;
+            stateResult = DELIMITER;
         } else if (chunk.isValueWrapper(curSymb)) {
-            stateResult = ReadingColumnState.VALUE_WRAPPER_SECOND;
+            stateResult = VALUE_WRAPPER_SECOND;
         }
 
         if (stateResult == null) {
@@ -63,18 +55,17 @@ public class CorrectFileWriter extends AbstractWriter {
             var buffer = new byte[BUFFER_SIZE];
             int bytesRead;
             var isLineCorrect = true;
-            var state = ReadingColumnState.DELIMITER;
+            var state = DELIMITER;
             var prevState = state;
 
             while ((bytesRead = raf.read(buffer)) != -1) {
                 var chunk = new ChunkTokenizer(new String(buffer, 0, bytesRead));
 
-                if (state != ReadingColumnState.SKIP_UNTIL_NEW_LINE && chunk.hasRemainingCharacters()) {
+                if (state != SKIP_UNTIL_NEW_LINE && chunk.hasRemainingCharacters()) {
                     var optionalState = stateByFirstLexeme(chunk);
                     if (optionalState.isPresent()) {
                         if (state == optionalState.get() &&
-                                state != ReadingColumnState.VALUE_WRAPPER_FIRST &&
-                                state != ReadingColumnState.VALUE_WRAPPER_SECOND) {
+                                state != VALUE_WRAPPER_FIRST && state != VALUE_WRAPPER_SECOND) {
                             state = prevState;
                         }
                     }
@@ -86,29 +77,29 @@ public class CorrectFileWriter extends AbstractWriter {
                     switch (state) {
                         case VALUE -> {
                             isLineCorrect = chunk.skipValueWrapper();
-                            state = ReadingColumnState.VALUE_WRAPPER_SECOND;
+                            state = VALUE_WRAPPER_SECOND;
                         }
                         case DELIMITER -> {
                             isLineCorrect = chunk.skipValueWrapper();
-                            state = ReadingColumnState.VALUE_WRAPPER_FIRST;
+                            state = VALUE_WRAPPER_FIRST;
                         }
                         case VALUE_WRAPPER_FIRST -> {
                             isLineCorrect = chunk.skipDigits();
-                            state = ReadingColumnState.VALUE;
+                            state = VALUE;
                         }
                         case VALUE_WRAPPER_SECOND -> {
                             isLineCorrect = chunk.skipColumnDelimiter();
-                            state = ReadingColumnState.DELIMITER;
+                            state = DELIMITER;
                             if (!isLineCorrect) {
                                 isLineCorrect = chunk.skipNewLines();
-                                state = ReadingColumnState.NEW_LINE;
+                                state = NEW_LINE;
                             }
                         }
                         case SKIP_UNTIL_NEW_LINE -> {
                             int newLineInd = chunk.skipUtilNewValidLine();
                             if (newLineInd != -1) {
                                 isLineCorrect = true;
-                                state = ReadingColumnState.DELIMITER;
+                                state = DELIMITER;
                                 curLineStart = seekIndexByBufferIndex(raf.getFilePointer(), raf.length(), newLineInd, bytesRead, chunk);
                             }
                         }
@@ -116,17 +107,17 @@ public class CorrectFileWriter extends AbstractWriter {
                         default -> throw new RuntimeException("Unexpected state");
                     }
 
-                    if (isLineCorrect && (state == ReadingColumnState.NEW_LINE ||
-                            state == ReadingColumnState.VALUE_WRAPPER_SECOND && isEOF(bytesRead, buffer.length, chunk))) {
+                    if (isLineCorrect && (state == NEW_LINE ||
+                            state == VALUE_WRAPPER_SECOND && isEOF(bytesRead, buffer.length, chunk))) {
                         raf.seek(curLineStart);
                         curLineStart = addValidLineToOutputFile(raf, fileWriterChannel);
                         if (!isEOF(bytesRead, buffer.length, chunk)) {
                             raf.seek(curLineStart);
                         }
-                        state = ReadingColumnState.SKIP_UNTIL_NEW_LINE;
+                        state = SKIP_UNTIL_NEW_LINE;
                         break;
                     } else if (!isLineCorrect) {
-                        state = ReadingColumnState.SKIP_UNTIL_NEW_LINE;
+                        state = SKIP_UNTIL_NEW_LINE;
                     }
                 }
             }
