@@ -1,4 +1,4 @@
-package org.example;
+package org.example.tokenizer;
 
 import java.util.function.Predicate;
 import java.util.stream.IntStream;

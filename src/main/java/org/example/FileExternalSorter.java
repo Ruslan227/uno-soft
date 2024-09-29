@@ -1,6 +1,7 @@
 package org.example;
 
 import com.google.code.externalsorting.ExternalSort;
+import org.example.tokenizer.ChunkTokenizer;
 
 import java.io.BufferedReader;
 import java.io.File;

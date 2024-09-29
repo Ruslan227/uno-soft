@@ -1,5 +1,7 @@
 package org.example;
 
+import org.example.tokenizer.ChunkTokenizer;
+
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
