@@ -1,4 +1,4 @@
-package org.example;
+package org.example.wrappers;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
