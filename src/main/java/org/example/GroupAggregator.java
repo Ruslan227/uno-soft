@@ -1,5 +1,6 @@
 package org.example;
 
+import org.example.dto.FileInfo;
 import org.example.external.sort.FileExternalSorter;
 import org.example.tokenizer.ChunkTokenizer;
 

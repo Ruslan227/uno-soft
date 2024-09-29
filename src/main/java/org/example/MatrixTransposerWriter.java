@@ -1,5 +1,6 @@
 package org.example;
 
+import org.example.dto.FileInfo;
 import org.example.tokenizer.ChunkTokenizer;
 
 import java.io.FileInputStream;
