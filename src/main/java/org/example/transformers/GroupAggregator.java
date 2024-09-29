@@ -1,5 +1,6 @@
-package org.example;
+package org.example.transformers;
 
+import org.example.OutputChannel;
 import org.example.dto.FileInfo;
 import org.example.external.sort.FileExternalSorter;
 import org.example.tokenizer.ChunkTokenizer;
