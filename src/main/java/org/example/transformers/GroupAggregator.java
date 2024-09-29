@@ -19,7 +19,7 @@ import java.util.stream.IntStream;
 
 import static java.nio.file.StandardOpenOption.*;
 
-public class GroupAggregator extends AbstractWriter {
+public class GroupAggregator extends AbstractFileWriter {
     private static final String TMP_DELIMITER = "|"; // expected to be 1 symbol
     private final Path duplicateRemovalInputPath;
     private final FileInfo fileInfo;

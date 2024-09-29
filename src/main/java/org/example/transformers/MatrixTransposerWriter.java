@@ -13,7 +13,7 @@ import java.nio.file.Path;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-public class MatrixTransposerWriter extends AbstractWriter {
+public class MatrixTransposerWriter extends AbstractFileWriter {
     private final FileInfo fileInfo;
     private final long[] filePointers;
 

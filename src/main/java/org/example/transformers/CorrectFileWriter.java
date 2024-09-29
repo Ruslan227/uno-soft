@@ -13,7 +13,7 @@ import java.util.Optional;
 
 import static java.lang.Math.max;
 
-public class CorrectFileWriter extends AbstractWriter {
+public class CorrectFileWriter extends AbstractFileWriter {
     private int validLinesAmount = 0;
     private long maxColumnsAmount = 0;
 
