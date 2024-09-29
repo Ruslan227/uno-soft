@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.Path;
 import java.util.Optional;
 
 import static java.lang.Math.max;
@@ -13,7 +14,7 @@ public class CorrectFileWriter extends AbstractWriter {
     private int validLinesAmount = 0;
     private long maxColumnsAmount = 0;
 
-    public CorrectFileWriter(String inputFilePath, String outputFilePath) {
+    public CorrectFileWriter(Path inputFilePath, Path outputFilePath) {
         super(inputFilePath, outputFilePath);
     }
 
@@ -55,8 +56,8 @@ public class CorrectFileWriter extends AbstractWriter {
     }
 
     public void writeOutput() {
-        try (RandomAccessFile raf = new RandomAccessFile(inputFilePath, "r");
-             FileOutputStream fos = new FileOutputStream(outputFilePath);
+        try (RandomAccessFile raf = new RandomAccessFile(inputFilePath.toString(), "r");
+             FileOutputStream fos = new FileOutputStream(outputFilePath.toString());
              FileChannel fileWriterChannel = fos.getChannel()) {
 
             long curLineStart = raf.getFilePointer();

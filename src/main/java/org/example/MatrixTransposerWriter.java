@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.Path;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -13,7 +14,7 @@ public class MatrixTransposerWriter extends AbstractWriter {
     private final FileInfo fileInfo;
     private final long[] filePointers;
 
-    public MatrixTransposerWriter(String inputFilePath, String outputFilePath, FileInfo fileInfo) {
+    public MatrixTransposerWriter(Path inputFilePath, Path outputFilePath, FileInfo fileInfo) {
         super(inputFilePath, outputFilePath);
         this.fileInfo = fileInfo;
         filePointers = new long[fileInfo.validLinesAmount()];
@@ -22,8 +23,8 @@ public class MatrixTransposerWriter extends AbstractWriter {
     public void transpose() {
         saveFilePointers();
 
-        try (RandomAccessFile raf = new RandomAccessFile(inputFilePath, "r");
-             FileOutputStream fos = new FileOutputStream(outputFilePath);
+        try (RandomAccessFile raf = new RandomAccessFile(inputFilePath.toString(), "r");
+             FileOutputStream fos = new FileOutputStream(outputFilePath.toString());
              FileChannel fileWriterChannel = fos.getChannel()) {
 
             var buffer = new byte[BUFFER_SIZE];
@@ -80,7 +81,7 @@ public class MatrixTransposerWriter extends AbstractWriter {
     }
 
     private void saveFilePointers() {
-        try (FileInputStream fis = new FileInputStream(inputFilePath);
+        try (FileInputStream fis = new FileInputStream(inputFilePath.toString());
              FileChannel fileReaderChannel = fis.getChannel()) {
 
             filePointers[0] = 0;

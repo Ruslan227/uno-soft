@@ -1,11 +1,13 @@
 package org.example;
 
+import java.nio.file.Path;
+
 public abstract class AbstractWriter {
     protected static final int BUFFER_SIZE = 256 * 1024 * 1024; // 256 Mb
-    protected final String inputFilePath;
-    protected final String outputFilePath;
+    protected final Path inputFilePath;
+    protected final Path outputFilePath;
 
-    public AbstractWriter(String inputFilePath, String outputFilePath) {
+    public AbstractWriter(Path inputFilePath, Path outputFilePath) {
         this.inputFilePath = inputFilePath;
         this.outputFilePath = outputFilePath;
     }

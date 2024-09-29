@@ -1,7 +1,6 @@
 package org.example;
 
 import java.io.BufferedReader;
-import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -29,7 +28,7 @@ public class GroupAggregator extends AbstractWriter {
      * @param outputFilePath path to file that will contain output
      * @param fileInfo       information about file - line amount (now it is column amount as matrix is transposed).
      */
-    public GroupAggregator(String inputFilePath, String outputFilePath, FileInfo fileInfo, Path duplicateRemovalInputPath) {
+    public GroupAggregator(Path inputFilePath, Path outputFilePath, FileInfo fileInfo, Path duplicateRemovalInputPath) {
         super(inputFilePath, outputFilePath);
         this.fileInfo = fileInfo;
         parent = new int[fileInfo.validLinesAmount()];
@@ -44,13 +43,13 @@ public class GroupAggregator extends AbstractWriter {
         makeParentsToBeRoots();
         var rootLinePath = createTemporaryFileRootLine();
         final var sortResultPath = Paths.get("").toAbsolutePath().resolve("root_line_sorted.txt");
-        FileExternalSorter.sortByGroup(rootLinePath.toString(), sortResultPath.toString(), TMP_DELIMITER, size);
+        FileExternalSorter.sortByGroup(rootLinePath, sortResultPath, TMP_DELIMITER, size);
         var groupsAmount = countGroupAmountWithSizeMoreThanOne();
         var output = writeResultToOutputFile(sortResultPath, groupsAmount);
 
         try {
-          Files.delete(rootLinePath);
-          Files.delete(sortResultPath);
+            Files.delete(rootLinePath);
+            Files.delete(sortResultPath);
         } catch (IOException e) {
             System.err.println(e.getMessage());
         }
@@ -182,8 +181,7 @@ public class GroupAggregator extends AbstractWriter {
         var outputChannelNotClosed = true;
         FileChannel fileOutputChannel = null;
 
-        try (FileInputStream fis = new FileInputStream(inputFilePath);
-             FileChannel fileInputChannel = fis.getChannel()) {
+        try (FileChannel fileInputChannel = FileChannel.open(inputFilePath, READ)) {
             fileOutputChannel = FileChannel.open(tmpFilePath, CREATE, WRITE, TRUNCATE_EXISTING);
 
             var buffer = ByteBuffer.allocate(BUFFER_SIZE);
@@ -220,7 +218,7 @@ public class GroupAggregator extends AbstractWriter {
                     if (readColumnState == AccumulateValueState.NEW_LINE) {
                         fileOutputChannel.close();
                         outputChannelNotClosed = false;
-                        FileExternalSorter.sortBySecondColumn(tmpFilePath.toString(), sortedTmpFilePath.toString());
+                        FileExternalSorter.sortBySecondColumn(tmpFilePath, sortedTmpFilePath);
                         mergeGroupsBySameColumn(sortedTmpFilePath);
                         fileOutputChannel = FileChannel.open(tmpFilePath, CREATE, WRITE, TRUNCATE_EXISTING);
                         outputChannelNotClosed = true;

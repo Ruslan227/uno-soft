@@ -125,8 +125,7 @@ public class ChunkTokenizer {
     }
 
     private void abstractSkipLexemesIfPresent(Predicate<Character> predicate) {
-        for (; hasRemainingCharacters() && predicate.test(s.charAt(curInd)); curInd++) {
-        }
+        for (; hasRemainingCharacters() && predicate.test(s.charAt(curInd)); curInd++) {}
     }
 
     public boolean hasRemainingCharacters() {
