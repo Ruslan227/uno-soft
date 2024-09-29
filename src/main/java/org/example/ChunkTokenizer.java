@@ -1,15 +1,13 @@
 package org.example;
 
-import java.nio.ByteBuffer;
-import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
 
 public class ChunkTokenizer {
-    private static final char COLUMN_DELIMITER = ';';
-    private static final char VALUE_WRAPPER = '\"';
-    private final String s;
-    private int curInd = 0;
+    protected static final char COLUMN_DELIMITER = ';';
+    protected static final char VALUE_WRAPPER = '\"';
+    protected final String s;
+    protected int curInd = 0;
 
     public ChunkTokenizer(String s) {
         this.s = s;
@@ -26,25 +24,10 @@ public class ChunkTokenizer {
         return curInd;
     }
 
-    public Optional<Boolean> accumulateColumnValue(ByteBuffer buffer) {
-        if (isNewLine(s.charAt(curInd))) {
-            return Optional.empty();
-        }
-        if (isColumnDelimiter(s.charAt(curInd))) {
-            curInd++;
-            return Optional.of(true);
-        }
-        while (hasRemainingCharacters() && !isColumnDelimiter(s.charAt(curInd)) && !isNewLine(s.charAt(curInd))) {
-            buffer.put((byte) s.charAt(curInd));
-            curInd++;
-        }
-        if (hasRemainingCharacters() && isColumnDelimiter(s.charAt(curInd))) {
-            curInd++;
-            return Optional.of(true);
-        }
-
-        return Optional.of(hasRemainingCharacters() && isNewLine(s.charAt(curInd)));
+    public boolean isCurrentNewLine() {
+        return hasRemainingCharacters() && isNewLine(s.charAt(curInd));
     }
+
 
     /**
      * @return position of last new line if new valid line was reached. If chunk was ended and not all new line symbols was
@@ -174,5 +157,9 @@ public class ChunkTokenizer {
 
     public boolean isWhitespace(char c) {
         return !isNewLine(c) && Character.isWhitespace(c);
+    }
+
+    public static char getColumnDelimiter() {
+        return COLUMN_DELIMITER;
     }
 }

@@ -41,16 +41,16 @@ public class MatrixTransposerWriter extends AbstractWriter {
                         if (bytesRead == -1) {
                             break;
                         }
-                        var chunk = new ChunkTokenizer(new String(buffer, 0, bytesRead));
-                        var isColumnEndOptional = chunk.accumulateColumnValue(columnPartBuffer);
-                        if (isColumnEndOptional.isEmpty()) { // end of line was already reached
+                        var chunk = new MatrixChunkTokenizer(new String(buffer, 0, bytesRead));
+                        var readPartState = chunk.accumulateColumnValue(columnPartBuffer);
+                        if (readPartState == AccumulateValueState.NEW_LINE && !columnPartBuffer.hasRemaining()) {
+                            fileWriterChannel.write(ByteBuffer.wrap(new byte[]{(byte) ChunkTokenizer.getColumnDelimiter()}));
                             break;
                         }
-                        isColumnEnd = isColumnEndOptional.get();
+                        isColumnEnd = readPartState == AccumulateValueState.DELIMITER || readPartState == AccumulateValueState.NEW_LINE;
 
-                        if (!isColumnEnd) { // if EOF is not new line
-                            isColumnEnd = bytesRead < BUFFER_SIZE && !chunk.hasRemainingCharacters();
-                        }
+                        var isEOF = bytesRead < BUFFER_SIZE && !chunk.hasRemainingCharacters();
+                        isColumnEnd = isColumnEnd || isEOF; // if EOF is not new line
 
                         if (isColumnEnd) {
                             filePointers[lineInd] = seekIndexByBufferIndex(
@@ -68,11 +68,11 @@ public class MatrixTransposerWriter extends AbstractWriter {
                         }
                         columnPartBuffer.clear();
                         if (isColumnEnd) {
-                            fileWriterChannel.write(ByteBuffer.wrap(new byte[] {';'}));
+                            fileWriterChannel.write(ByteBuffer.wrap(new byte[]{(byte) ChunkTokenizer.getColumnDelimiter()}));
                         }
                     }
                 }
-                fileWriterChannel.write(ByteBuffer.wrap(new byte[] {'\n'}));
+                fileWriterChannel.write(ByteBuffer.wrap(new byte[]{'\n'}));
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -97,7 +97,7 @@ public class MatrixTransposerWriter extends AbstractWriter {
                 while (chunk.hasRemainingCharacters()) {
                     int newLineInd = chunk.skipUtilNewValidLine();
 
-                    if (newLineInd != -1) {
+                    if (newLineInd != -1 && chunk.hasRemainingCharacters()) {
                         filePointers[lineInd] = seekIndexByBufferIndex(
                                 fileReaderChannel.position(),
                                 fileReaderChannel.size(),
@@ -119,5 +119,39 @@ public class MatrixTransposerWriter extends AbstractWriter {
 
     public long[] getFilePointers() {
         return filePointers;
+    }
+
+    private enum AccumulateValueState {
+        NEW_LINE, DELIMITER, VALUE_PART
+    }
+
+    private static class MatrixChunkTokenizer extends ChunkTokenizer {
+
+        public MatrixChunkTokenizer(String s) {
+            super(s);
+        }
+
+        public AccumulateValueState accumulateColumnValue(ByteBuffer buffer) {
+            if (isNewLine(s.charAt(curInd))) {
+                return AccumulateValueState.NEW_LINE;
+            }
+            if (isColumnDelimiter(s.charAt(curInd))) {
+                curInd++;
+                return AccumulateValueState.DELIMITER;
+            }
+            while (hasRemainingCharacters() && !isColumnDelimiter(s.charAt(curInd)) && !isNewLine(s.charAt(curInd))) {
+                buffer.put((byte) s.charAt(curInd));
+                curInd++;
+            }
+            if (hasRemainingCharacters() && isColumnDelimiter(s.charAt(curInd))) {
+                curInd++;
+                return AccumulateValueState.DELIMITER;
+            }
+            if (hasRemainingCharacters() && isNewLine(s.charAt(curInd))) {
+                return AccumulateValueState.NEW_LINE;
+            }
+
+            return AccumulateValueState.VALUE_PART;
+        }
     }
 }
