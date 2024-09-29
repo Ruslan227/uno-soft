@@ -13,11 +13,11 @@ import java.nio.file.Path;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-public class MatrixTransposerWriter extends AbstractFileWriter {
+public class MatrixTransposer extends AbstractFileWriter {
     private final FileInfo fileInfo;
     private final long[] filePointers;
 
-    public MatrixTransposerWriter(Path inputFilePath, Path outputFilePath, FileInfo fileInfo) {
+    public MatrixTransposer(Path inputFilePath, Path outputFilePath, FileInfo fileInfo) {
         super(inputFilePath, outputFilePath);
         this.fileInfo = fileInfo;
         filePointers = new long[fileInfo.validLinesAmount()];
