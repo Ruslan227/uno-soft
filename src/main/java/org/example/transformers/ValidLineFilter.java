@@ -13,11 +13,11 @@ import java.util.Optional;
 
 import static java.lang.Math.max;
 
-public class CorrectFileWriter extends AbstractFileWriter {
+public class ValidLineFilter extends AbstractFileWriter {
     private int validLinesAmount = 0;
     private long maxColumnsAmount = 0;
 
-    public CorrectFileWriter(Path inputFilePath, Path outputFilePath) {
+    public ValidLineFilter(Path inputFilePath, Path outputFilePath) {
         super(inputFilePath, outputFilePath);
     }
 
