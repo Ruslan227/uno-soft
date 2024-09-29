@@ -1,4 +1,4 @@
-package org.example;
+package org.example.external.sort;
 
 import com.google.code.externalsorting.ExternalSort;
 import org.example.tokenizer.ChunkTokenizer;

@@ -1,5 +1,6 @@
 package org.example;
 
+import org.example.external.sort.FileExternalSorter;
 import org.example.tokenizer.ChunkTokenizer;
 
 import java.io.BufferedReader;
