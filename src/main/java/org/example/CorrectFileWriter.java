@@ -8,7 +8,6 @@ import java.nio.channels.FileChannel;
 import java.util.Optional;
 
 import static java.lang.Math.max;
-import static org.example.ColumnState.*;
 
 public class CorrectFileWriter extends AbstractWriter {
     private int validLinesAmount = 0;
@@ -16,6 +15,15 @@ public class CorrectFileWriter extends AbstractWriter {
 
     public CorrectFileWriter(String inputFilePath, String outputFilePath) {
         super(inputFilePath, outputFilePath);
+    }
+
+    private enum ColumnState {
+        DELIMITER,
+        VALUE_WRAPPER_FIRST,
+        VALUE,
+        VALUE_WRAPPER_SECOND,
+        NEW_LINE,
+        SKIP_UNTIL_NEW_LINE
     }
 
     private Optional<ColumnState> stateByFirstLexeme(ChunkTokenizer chunk) {
@@ -30,13 +38,13 @@ public class CorrectFileWriter extends AbstractWriter {
         ColumnState stateResult = null;
 
         if (chunk.isDigit(curSymb)) {
-            stateResult = VALUE;
+            stateResult = ColumnState.VALUE;
         } else if (chunk.isNewLine(curSymb)) {
-            stateResult = NEW_LINE;
+            stateResult = ColumnState.NEW_LINE;
         } else if (chunk.isColumnDelimiter(curSymb)) {
-            stateResult = DELIMITER;
+            stateResult = ColumnState.DELIMITER;
         } else if (chunk.isValueWrapper(curSymb)) {
-            stateResult = VALUE_WRAPPER_SECOND;
+            stateResult = ColumnState.VALUE_WRAPPER_SECOND;
         }
 
         if (stateResult == null) {
@@ -55,17 +63,17 @@ public class CorrectFileWriter extends AbstractWriter {
             var buffer = new byte[BUFFER_SIZE];
             int bytesRead;
             var isLineCorrect = true;
-            var state = DELIMITER;
+            var state = ColumnState.DELIMITER;
             var prevState = state;
 
             while ((bytesRead = raf.read(buffer)) != -1) {
                 var chunk = new ChunkTokenizer(new String(buffer, 0, bytesRead));
 
-                if (state != SKIP_UNTIL_NEW_LINE && chunk.hasRemainingCharacters()) {
+                if (state != ColumnState.SKIP_UNTIL_NEW_LINE && chunk.hasRemainingCharacters()) {
                     var optionalState = stateByFirstLexeme(chunk);
                     if (optionalState.isPresent()) {
                         if (state == optionalState.get() &&
-                                state != VALUE_WRAPPER_FIRST && state != VALUE_WRAPPER_SECOND) {
+                                state != ColumnState.VALUE_WRAPPER_FIRST && state != ColumnState.VALUE_WRAPPER_SECOND) {
                             state = prevState;
                         }
                     }
@@ -77,29 +85,29 @@ public class CorrectFileWriter extends AbstractWriter {
                     switch (state) {
                         case VALUE -> {
                             isLineCorrect = chunk.skipValueWrapper();
-                            state = VALUE_WRAPPER_SECOND;
+                            state = ColumnState.VALUE_WRAPPER_SECOND;
                         }
                         case DELIMITER -> {
                             isLineCorrect = chunk.skipValueWrapper();
-                            state = VALUE_WRAPPER_FIRST;
+                            state = ColumnState.VALUE_WRAPPER_FIRST;
                         }
                         case VALUE_WRAPPER_FIRST -> {
                             isLineCorrect = chunk.skipDigits();
-                            state = VALUE;
+                            state = ColumnState.VALUE;
                         }
                         case VALUE_WRAPPER_SECOND -> {
                             isLineCorrect = chunk.skipColumnDelimiter();
-                            state = DELIMITER;
+                            state = ColumnState.DELIMITER;
                             if (!isLineCorrect) {
                                 isLineCorrect = chunk.skipNewLines();
-                                state = NEW_LINE;
+                                state = ColumnState.NEW_LINE;
                             }
                         }
                         case SKIP_UNTIL_NEW_LINE -> {
                             int newLineInd = chunk.skipUtilNewValidLine();
                             if (newLineInd != -1) {
                                 isLineCorrect = true;
-                                state = DELIMITER;
+                                state = ColumnState.DELIMITER;
                                 curLineStart = seekIndexByBufferIndex(raf.getFilePointer(), raf.length(), newLineInd, bytesRead, chunk);
                             }
                         }
@@ -107,17 +115,17 @@ public class CorrectFileWriter extends AbstractWriter {
                         default -> throw new RuntimeException("Unexpected state");
                     }
 
-                    if (isLineCorrect && (state == NEW_LINE ||
-                            state == VALUE_WRAPPER_SECOND && isEOF(bytesRead, buffer.length, chunk))) {
+                    if (isLineCorrect && (state == ColumnState.NEW_LINE ||
+                            state == ColumnState.VALUE_WRAPPER_SECOND && isEOF(bytesRead, buffer.length, chunk))) {
                         raf.seek(curLineStart);
                         curLineStart = addValidLineToOutputFile(raf, fileWriterChannel);
                         if (!isEOF(bytesRead, buffer.length, chunk)) {
                             raf.seek(curLineStart);
                         }
-                        state = SKIP_UNTIL_NEW_LINE;
+                        state = ColumnState.SKIP_UNTIL_NEW_LINE;
                         break;
                     } else if (!isLineCorrect) {
-                        state = SKIP_UNTIL_NEW_LINE;
+                        state = ColumnState.SKIP_UNTIL_NEW_LINE;
                     }
                 }
             }
@@ -163,10 +171,6 @@ public class CorrectFileWriter extends AbstractWriter {
         maxColumnsAmount = max(maxColumnsAmount, delimitersAmount + 1);
 
         return filePointerToBufferWithNewLine;
-    }
-
-    public String outputFilePath() {
-        return outputFilePath;
     }
 
     public FileInfo fileInfo() {
