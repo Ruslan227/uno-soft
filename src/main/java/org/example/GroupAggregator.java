@@ -10,11 +10,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.stream.IntStream;
 
 import static java.nio.file.StandardOpenOption.*;
 
 public class GroupAggregator extends AbstractWriter {
+    private static final String TMP_DELIMITER = "|"; // expected to be 1 symbol
+    private final Path duplicateRemovalInputPath;
     private final FileInfo fileInfo;
     private final int[] parent;
     private final int[] size;
@@ -26,16 +29,153 @@ public class GroupAggregator extends AbstractWriter {
      * @param outputFilePath path to file that will contain output
      * @param fileInfo       information about file - line amount (now it is column amount as matrix is transposed).
      */
-    public GroupAggregator(String inputFilePath, String outputFilePath, FileInfo fileInfo) {
+    public GroupAggregator(String inputFilePath, String outputFilePath, FileInfo fileInfo, Path duplicateRemovalInputPath) {
         super(inputFilePath, outputFilePath);
         this.fileInfo = fileInfo;
         parent = new int[fileInfo.validLinesAmount()];
         IntStream.range(0, parent.length).forEach(i -> parent[i] = i);
         size = new int[fileInfo.validLinesAmount()];
         Arrays.fill(size, 1);
+        this.duplicateRemovalInputPath = duplicateRemovalInputPath;
     }
 
-    public void aggregateGroups() {
+    public Path aggregateGroups() {
+        computeDSU();
+        makeParentsToBeRoots();
+        var rootLinePath = createTemporaryFileRootLine();
+        final var sortResultPath = Paths.get("").toAbsolutePath().resolve("root_line_sorted.txt");
+        FileExternalSorter.sortByGroup(rootLinePath.toString(), sortResultPath.toString(), TMP_DELIMITER, size);
+        var groupsAmount = countGroupAmountWithSizeMoreThanOne();
+        var output = writeResultToOutputFile(sortResultPath, groupsAmount);
+
+        try {
+          Files.delete(rootLinePath);
+          Files.delete(sortResultPath);
+        } catch (IOException e) {
+            System.err.println(e.getMessage());
+        }
+
+        return output;
+    }
+
+    private Path writeResultToOutputFile(Path sortedRootLine, int groupsAmount) {
+        var resultPath = Paths.get("").toAbsolutePath().resolve("result.txt");
+
+        try (var inputChannel = FileChannel.open(sortedRootLine, READ);
+             var outputNIOChannel = FileChannel.open(resultPath, TRUNCATE_EXISTING, WRITE, CREATE)) {
+
+            var outputChannel = new OutputChannel(outputNIOChannel);
+            outputChannel.write(groupsAmount + "\n");
+
+            int bytesRead;
+            var buffer = ByteBuffer.allocate(BUFFER_SIZE);
+            int prevGroup = -1;
+
+            while ((bytesRead = inputChannel.read(buffer)) != -1) {
+                var chunk = new ChunkTokenizer(new String(buffer.array(), 0, bytesRead));
+
+                while (chunk.hasRemainingCharacters()) {
+                    var delimiterIndex = chunk.indexOf(c -> c == TMP_DELIMITER.charAt(0));
+
+                    if (delimiterIndex != -1) {
+                        var group = Integer.parseInt(chunk.substring(delimiterIndex));
+                        chunk.setIndex(delimiterIndex + 1);
+
+                        if (prevGroup == -1) {
+                            prevGroup = group;
+                        }
+                        if (group != prevGroup) {
+                            outputChannel.write("\nГруппа " + (group + 1) + "\n");
+                            prevGroup = group;
+                        }
+                    } else {
+                        var newLineIndex = chunk.indexOfNewLine();
+
+                        if (newLineIndex != -1) {
+                            outputChannel.write(chunk.substring(newLineIndex + 1));
+                            chunk.setIndex(newLineIndex + 1);
+                        } else {
+                            outputChannel.write(chunk.substring(chunk.size()));
+                            chunk.setIndex(chunk.size() - 1);
+                        }
+                    }
+                }
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        return resultPath;
+    }
+
+    private int countGroupAmountWithSizeMoreThanOne() {
+        var counted = new HashSet<Integer>();
+        int res = 0;
+
+        for (int i = 0; i < parent.length; i++) {
+            if (!counted.contains(parent[i])) {
+                if (size[i] > 1) {
+                    res++;
+                }
+                counted.add(parent[i]);
+            }
+        }
+
+        return res;
+    }
+
+    /**
+     * Creates file in format: [root_num'delimiter'line]
+     *
+     * @return path of result file
+     */
+    private Path createTemporaryFileRootLine() {
+        final var resultPath = Paths.get("").toAbsolutePath().resolve("root_line.txt");
+
+        try (var inputChannel = FileChannel.open(duplicateRemovalInputPath, READ);
+             var outputNIOChannel = FileChannel.open(resultPath, TRUNCATE_EXISTING, WRITE, CREATE)) {
+            var outputChannel = new OutputChannel(outputNIOChannel);
+            int bytesRead;
+            int ind = 0;
+            var buffer = ByteBuffer.allocate(BUFFER_SIZE);
+            var wasRootIndexAppended = false;
+
+            while ((bytesRead = inputChannel.read(buffer)) != -1) {
+                var chunk = new ChunkTokenizer(new String(buffer.array(), 0, bytesRead));
+                var newLineInd = chunk.indexOfNewLine();
+
+                if (!wasRootIndexAppended) {
+                    outputChannel.write(parent[ind] + TMP_DELIMITER);
+                    ind++;
+                    wasRootIndexAppended = true;
+                }
+                if (newLineInd != -1) {
+                    // write chunk part before \n (inclusive \n)
+                    outputNIOChannel.write(buffer.slice(0, newLineInd + 1));
+                    if (bytesRead > newLineInd + 1) {
+                        outputChannel.write(parent[ind] + TMP_DELIMITER);
+                        outputNIOChannel.write(buffer.slice(newLineInd + 1, buffer.position()));
+                        wasRootIndexAppended = true;
+                        ind++;
+                    } else {
+                        wasRootIndexAppended = false;
+                    }
+                } else {
+                    outputNIOChannel.write(buffer);
+                }
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        return resultPath;
+    }
+
+    private void makeParentsToBeRoots() {
+        IntStream.range(0, parent.length).forEach(this::findRoot);
+    }
+
+    private void computeDSU() {
         Path absolutePath = Paths.get("").toAbsolutePath();
         var tmpFilePath = absolutePath.resolve("tmp.txt");
         var sortedTmpFilePath = absolutePath.resolve("tmp_sorted.txt");

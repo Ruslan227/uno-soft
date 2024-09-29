@@ -3,6 +3,8 @@ package org.example;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
 
+import static java.lang.Math.min;
+
 public class ChunkTokenizer {
     protected static final char COLUMN_DELIMITER = ';';
     protected static final char VALUE_WRAPPER = '\"';
@@ -20,6 +22,17 @@ public class ChunkTokenizer {
         return -1;
     }
 
+    public int size() {
+        return s.length();
+    }
+
+    public void setIndex(int index) {
+        if (index < 0) {
+            throw new IllegalArgumentException("Index is out of bounds [0; " + s.length() + "). Index: " + index);
+        }
+        curInd = min(size() - 1, index);
+    }
+
     public int getCurrentIndex() {
         return curInd;
     }
@@ -28,6 +41,12 @@ public class ChunkTokenizer {
         return hasRemainingCharacters() && isNewLine(s.charAt(curInd));
     }
 
+    public String substring(int to) {
+        if (to < 0 || to > s.length()) {
+            throw new IllegalArgumentException("Border 'to' must be inside [0; " + s.length() + "] interval. 'to'=" + to);
+        }
+        return s.substring(curInd, to);
+    }
 
     /**
      * @return position of last new line if new valid line was reached. If chunk was ended and not all new line symbols was

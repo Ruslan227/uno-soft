@@ -30,6 +30,19 @@ public class FileExternalSorter {
         abstractSort(inputFilePath, outputFilePath, cmp, false);
     }
 
+    public static void sortByGroup(String inputFilePath, String outputFilePath, String delimiter, int[] size) {
+        Comparator<String> cmp = (s1, s2) -> {
+            var root1 = Integer.parseInt(s1.split(delimiter, 2)[0]);
+            var root2 = Integer.parseInt(s2.split(delimiter, 2)[0]);
+            if (root1 != root2) {
+               return size[root2] - size[root1];
+            } else {
+                return 0;
+            }
+        };
+        abstractSort(inputFilePath, outputFilePath, cmp, false);
+    }
+
     private static void abstractSort(String inputFilePath, String outputFilePath, Comparator<String> cmp, boolean distinct) {
         try (var reader = new BufferedReader(new FileReader(inputFilePath))) {
             var inputFile = Paths.get(inputFilePath).toFile();
