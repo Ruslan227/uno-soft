@@ -13,7 +13,7 @@ import java.util.List;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-public class FileExternalSorter {
+public class ExternalFileSorter {
     private static final long MAX_MEMORY_USAGE = 256 * 1024 * 1024; // 256 Mb
     private static final int MAX_TMP_FILES = 500;
 

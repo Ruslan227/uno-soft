@@ -2,7 +2,7 @@ package org.example.transformers;
 
 import org.example.wrappers.OutputChannel;
 import org.example.dto.FileInfo;
-import org.example.external.sort.FileExternalSorter;
+import org.example.external.sort.ExternalFileSorter;
 import org.example.tokenizer.ChunkTokenizer;
 
 import java.io.BufferedReader;
@@ -48,7 +48,7 @@ public class GroupAggregator extends AbstractFileWriter {
         makeParentsToBeRoots();
         var rootLinePath = createTemporaryFileRootLine();
         final var sortResultPath = Paths.get("").toAbsolutePath().resolve("root_line_sorted.txt");
-        FileExternalSorter.sortByGroup(rootLinePath, sortResultPath, TMP_DELIMITER, size);
+        ExternalFileSorter.sortByGroup(rootLinePath, sortResultPath, TMP_DELIMITER, size);
         var groupsAmount = countGroupAmountWithSizeMoreThanOne();
         var output = writeResultToOutputFile(sortResultPath, groupsAmount);
 
@@ -223,7 +223,7 @@ public class GroupAggregator extends AbstractFileWriter {
                     if (readColumnState == AccumulateValueState.NEW_LINE) {
                         fileOutputChannel.close();
                         outputChannelNotClosed = false;
-                        FileExternalSorter.sortBySecondColumn(tmpFilePath, sortedTmpFilePath);
+                        ExternalFileSorter.sortBySecondColumn(tmpFilePath, sortedTmpFilePath);
                         mergeGroupsBySameColumn(sortedTmpFilePath);
                         fileOutputChannel = FileChannel.open(tmpFilePath, CREATE, WRITE, TRUNCATE_EXISTING);
                         outputChannelNotClosed = true;
