@@ -2,7 +2,10 @@ package org.example;
 
 import com.google.code.externalsorting.ExternalSort;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.Comparator;
 import java.util.List;
@@ -10,30 +13,43 @@ import java.util.List;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class FileExternalSorter {
+    private static final long MAX_MEMORY_USAGE = 256 * 1024 * 1024; // 256 Mb
+    private static final int MAX_TMP_FILES = 500;
 
     public static void removeDuplicates(String inputFilePath, String outputFilePath) {
-        try(var reader = new BufferedReader(new FileReader(inputFilePath))) {
+        abstractSort(inputFilePath, outputFilePath, Comparator.naturalOrder(), true);
+    }
+
+    public static void sortBySecondColumn(String inputFilePath, String outputFilePath) {
+        Comparator<String> cmp = (s1, s2) -> {
+            var columnDelimiter = String.valueOf(ChunkTokenizer.getColumnDelimiter());
+            var column1 = s1.split(columnDelimiter, 2)[1];
+            var column2 = s2.split(columnDelimiter, 2)[1];
+            return column1.compareTo(column2);
+        };
+        abstractSort(inputFilePath, outputFilePath, cmp, false);
+    }
+
+    private static void abstractSort(String inputFilePath, String outputFilePath, Comparator<String> cmp, boolean distinct) {
+        try (var reader = new BufferedReader(new FileReader(inputFilePath))) {
             var inputFile = Paths.get(inputFilePath).toFile();
             var outputFile = Paths.get(outputFilePath).toFile();
-
-            long maxMemoryUsage = 10 * 1024 * 1024;
-            int maxTmpFiles = 500;
 
             List<File> sortedFiles = ExternalSort.sortInBatch(
                     reader,
                     inputFile.length(),
-                    Comparator.naturalOrder(),
-                    maxTmpFiles,
-                    maxMemoryUsage,
+                    cmp,
+                    MAX_TMP_FILES,
+                    MAX_MEMORY_USAGE,
                     UTF_8,
                     null,
-                    false,
+                    distinct,
                     0,
                     false,
                     true
             );
 
-            ExternalSort.mergeSortedFiles(sortedFiles, outputFile, Comparator.naturalOrder(), UTF_8, true);
+            ExternalSort.mergeSortedFiles(sortedFiles, outputFile, cmp, UTF_8, distinct);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
