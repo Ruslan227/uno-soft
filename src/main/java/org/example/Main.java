@@ -23,7 +23,6 @@ public class Main {
 
         Files.delete(correctFileWriterOutputPath);
 
-
         var matrixTransposerWriterOutputPath = Path.of("src", "main", "resources", "output_matrix_transposer.txt");
         var matrixTransposerWriter = new MatrixTransposer(
                 duplicateRemovalOutputPath,
