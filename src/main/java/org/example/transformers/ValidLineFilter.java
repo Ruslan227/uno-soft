@@ -1,8 +1,10 @@
 package org.example.transformers;
 
 import org.example.dto.FileInfo;
+import org.example.exceptions.TransformerException;
 import org.example.tokenizer.ChunkTokenizer;
 
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -58,7 +60,7 @@ public class ValidLineFilter extends AbstractFileWriter {
         return Optional.of(stateResult);
     }
 
-    public void writeOutput() {
+    public void writeOutput() throws TransformerException {
         try (RandomAccessFile raf = new RandomAccessFile(inputFilePath.toString(), "r");
              FileOutputStream fos = new FileOutputStream(outputFilePath.toString());
              FileChannel fileWriterChannel = fos.getChannel()) {
@@ -133,8 +135,10 @@ public class ValidLineFilter extends AbstractFileWriter {
                     }
                 }
             }
+        } catch (FileNotFoundException e) {
+            throw new TransformerException("Failed to find file when filtering.", inputFilePath, outputFilePath, e);
         } catch (IOException e) {
-            System.err.println(e.getMessage());
+            throw new TransformerException("Failed to filter input file " + inputFilePath, e);
         }
     }
 

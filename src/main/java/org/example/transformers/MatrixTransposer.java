@@ -1,12 +1,10 @@
 package org.example.transformers;
 
 import org.example.dto.FileInfo;
+import org.example.exceptions.TransformerException;
 import org.example.tokenizer.ChunkTokenizer;
 
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.RandomAccessFile;
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
@@ -23,7 +21,7 @@ public class MatrixTransposer extends AbstractFileWriter {
         filePointers = new long[fileInfo.validLinesAmount()];
     }
 
-    public void transpose() {
+    public void transpose() throws TransformerException {
         saveFilePointers();
 
         try (RandomAccessFile raf = new RandomAccessFile(inputFilePath.toString(), "r");
@@ -78,12 +76,14 @@ public class MatrixTransposer extends AbstractFileWriter {
                 }
                 fileWriterChannel.write(ByteBuffer.wrap(new byte[]{'\n'}));
             }
+        } catch (FileNotFoundException e) {
+            throw new TransformerException("Failed to find file when transposing matrix.", inputFilePath,outputFilePath,e);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new TransformerException("Failed to transpose the matrix. File: " + inputFilePath, e);
         }
     }
 
-    private void saveFilePointers() {
+    private void saveFilePointers() throws TransformerException {
         try (FileInputStream fis = new FileInputStream(inputFilePath.toString());
              FileChannel fileReaderChannel = fis.getChannel()) {
 
@@ -117,7 +117,7 @@ public class MatrixTransposer extends AbstractFileWriter {
             }
 
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new TransformerException("Failed to count file pointers for matrix transposing in file: " + inputFilePath, e);
         }
     }
 

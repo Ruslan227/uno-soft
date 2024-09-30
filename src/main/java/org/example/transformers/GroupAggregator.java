@@ -1,9 +1,10 @@
 package org.example.transformers;
 
-import org.example.wrappers.OutputChannel;
 import org.example.dto.FileInfo;
+import org.example.exceptions.TransformerException;
 import org.example.external.sort.ExternalFileSorter;
 import org.example.tokenizer.ChunkTokenizer;
+import org.example.wrappers.OutputChannel;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -43,7 +44,7 @@ public class GroupAggregator extends AbstractFileWriter {
         this.duplicateRemovalInputPath = duplicateRemovalInputPath;
     }
 
-    public Path aggregateGroups() {
+    public Path aggregateGroups() throws TransformerException {
         computeDSU();
         makeParentsToBeRoots();
         var rootLinePath = createTemporaryFileRootLine();
@@ -56,13 +57,14 @@ public class GroupAggregator extends AbstractFileWriter {
             Files.delete(rootLinePath);
             Files.delete(sortResultPath);
         } catch (IOException e) {
-            System.err.println(e.getMessage());
+            throw new TransformerException("Failed deleting temporary files after group aggregation: " +
+                    rootLinePath + "; " + sortResultPath, e);
         }
 
         return output;
     }
 
-    private Path writeResultToOutputFile(Path sortedRootLine, int groupsAmount) {
+    private Path writeResultToOutputFile(Path sortedRootLine, int groupsAmount) throws TransformerException {
         var resultPath = Paths.get("").toAbsolutePath().resolve("result.txt");
 
         try (var inputChannel = FileChannel.open(sortedRootLine, READ);
@@ -106,7 +108,7 @@ public class GroupAggregator extends AbstractFileWriter {
                 }
             }
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new TransformerException("Final stage of group aggregation failed.", sortedRootLine, resultPath, e);
         }
 
         return resultPath;
@@ -133,7 +135,7 @@ public class GroupAggregator extends AbstractFileWriter {
      *
      * @return path of result file
      */
-    private Path createTemporaryFileRootLine() {
+    private Path createTemporaryFileRootLine() throws TransformerException {
         final var resultPath = Paths.get("").toAbsolutePath().resolve("root_line.txt");
 
         try (var inputChannel = FileChannel.open(duplicateRemovalInputPath, READ);
@@ -169,7 +171,8 @@ public class GroupAggregator extends AbstractFileWriter {
                 }
             }
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new TransformerException("Failed to create temporary file in format: '<group_num>" +
+                    TMP_DELIMITER + "<line>'.", e);
         }
 
         return resultPath;
@@ -179,7 +182,7 @@ public class GroupAggregator extends AbstractFileWriter {
         IntStream.range(0, parent.length).forEach(this::findRoot);
     }
 
-    private void computeDSU() {
+    private void computeDSU() throws TransformerException {
         Path absolutePath = Paths.get("").toAbsolutePath();
         var tmpFilePath = absolutePath.resolve("tmp.txt");
         var sortedTmpFilePath = absolutePath.resolve("tmp_sorted.txt");
@@ -243,7 +246,7 @@ public class GroupAggregator extends AbstractFileWriter {
 
 
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new TransformerException("Failed while merging groups.", inputFilePath, tmpFilePath, e);
         } finally {
             if (outputChannelNotClosed && fileOutputChannel != null) {
                 try {
