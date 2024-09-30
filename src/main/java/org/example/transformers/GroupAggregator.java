@@ -23,6 +23,7 @@ import java.util.stream.IntStream;
 import static java.nio.file.StandardOpenOption.*;
 
 public class GroupAggregator extends AbstractFileWriter {
+    private static final String EMPTY_VALUE = "\"\"";
     private static final String TMP_DELIMITER = "|"; // expected to be 1 symbol
     private final Path duplicateRemovalInputPath;
     private final FileInfo fileInfo;
@@ -89,34 +90,31 @@ public class GroupAggregator extends AbstractFileWriter {
             int bytesRead;
             var buffer = ByteBuffer.allocate(BUFFER_SIZE);
             int prevGroup = -1;
+            int groupToPrint = 1;
 
             while ((bytesRead = inputChannel.read(buffer)) != -1) {
                 var chunk = new ChunkTokenizer(new String(buffer.array(), 0, bytesRead));
 
                 while (chunk.hasRemainingCharacters()) {
-                    var delimiterIndex = chunk.indexOf(c -> c == TMP_DELIMITER.charAt(0));
+                    var delimiterIndex = chunk.indexOfFromCurrentIndex(c -> c == TMP_DELIMITER.charAt(0));
+                    var newLineIndex = chunk.indexOfNewLineFromCurrentIndex();
+                    var bothAreFound = (delimiterIndex != -1) && (newLineIndex != -1);
 
-                    if (delimiterIndex != -1) {
+                    if ((delimiterIndex != -1 && newLineIndex == -1) || (bothAreFound && delimiterIndex < newLineIndex)) {
                         var group = Integer.parseInt(chunk.substring(delimiterIndex));
                         chunk.setIndex(delimiterIndex + 1);
 
-                        if (prevGroup == -1) {
-                            prevGroup = group;
-                        }
                         if (group != prevGroup) {
-                            outputChannel.write("\nГруппа " + (group + 1) + "\n");
+                            outputChannel.write("\nГруппа " + (groupToPrint) + "\n");
                             prevGroup = group;
+                            groupToPrint++;
                         }
+                    } else if ((newLineIndex != -1 && delimiterIndex == -1) || (bothAreFound && newLineIndex < delimiterIndex)) {
+                        outputChannel.write(chunk.substring(newLineIndex + 1));
+                        chunk.setIndex(newLineIndex + 1);
                     } else {
-                        var newLineIndex = chunk.indexOfNewLine();
-
-                        if (newLineIndex != -1) {
-                            outputChannel.write(chunk.substring(newLineIndex + 1));
-                            chunk.setIndex(newLineIndex + 1);
-                        } else {
-                            outputChannel.write(chunk.substring(chunk.size()));
-                            chunk.setIndex(chunk.size() - 1);
-                        }
+                        outputChannel.write(chunk.substring(chunk.size()));
+                        chunk.setIndex(chunk.size() - 1);
                     }
                 }
             }
@@ -134,11 +132,12 @@ public class GroupAggregator extends AbstractFileWriter {
         int res = 0;
 
         for (int i = 0; i < parent.length; i++) {
-            if (!counted.contains(parent[i])) {
-                if (size[i] > 1) {
+            int parent = this.parent[i];
+            if (!counted.contains(parent)) {
+                if (size[parent] > 1) {
                     res++;
                 }
-                counted.add(parent[i]);
+                counted.add(parent);
             }
         }
 
@@ -163,26 +162,24 @@ public class GroupAggregator extends AbstractFileWriter {
 
             while ((bytesRead = inputChannel.read(buffer)) != -1) {
                 var chunk = new ChunkTokenizer(new String(buffer.array(), 0, bytesRead));
-                var newLineInd = chunk.indexOfNewLine();
 
-                if (!wasRootIndexAppended) {
-                    outputChannel.write(parent[ind] + TMP_DELIMITER);
-                    ind++;
-                    wasRootIndexAppended = true;
-                }
-                if (newLineInd != -1) {
-                    // write chunk part before \n (inclusive \n)
-                    outputNIOChannel.write(buffer.slice(0, newLineInd + 1));
-                    if (bytesRead > newLineInd + 1) {
+                while (chunk.hasRemainingCharacters() && ind < parent.length) {
+                    var newLineInd = chunk.indexOfNewLineFromCurrentIndex();
+
+                    if (!wasRootIndexAppended) {
                         outputChannel.write(parent[ind] + TMP_DELIMITER);
-                        outputNIOChannel.write(buffer.slice(newLineInd + 1, buffer.position()));
-                        wasRootIndexAppended = true;
                         ind++;
-                    } else {
-                        wasRootIndexAppended = false;
+                        wasRootIndexAppended = true;
                     }
-                } else {
-                    outputNIOChannel.write(buffer);
+                    if (newLineInd != -1) {
+                        // write chunk part before \n (inclusive \n)
+                        outputChannel.write(chunk.substring(newLineInd + 1));
+                        chunk.setIndex(newLineInd + 1);
+                        wasRootIndexAppended = false;
+                    } else {
+                        outputNIOChannel.write(buffer);
+                        chunk.setIndex(chunk.size() - 1);
+                    }
                 }
             }
         } catch (IOException e) {
@@ -286,7 +283,7 @@ public class GroupAggregator extends AbstractFileWriter {
 
             while ((currentLine = reader.readLine()) != null) {
                 var current = IndexValue.from(currentLine);
-                if (current.value().equals(previous.value())) {
+                if (current.value().equals(previous.value()) && !current.value().equals(EMPTY_VALUE)) {
                     mergeGroups(current.ind(), previous.ind());
                 } else {
                     previous = current;
