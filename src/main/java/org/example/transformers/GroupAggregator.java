@@ -125,9 +125,10 @@ public class GroupAggregator extends AbstractFileWriter {
                         }
                     } else {
                         outputChannel.write(chunk.substring(chunk.size()));
-                        chunk.setIndex(chunk.size() - 1);
+                        chunk.setIndex(chunk.size());
                     }
                 }
+                buffer.clear();
             }
         } catch (IOException e) {
             throw new TransformerException("Final stage of group aggregation failed.", sortedRootLine, resultPath, e);
@@ -188,10 +189,11 @@ public class GroupAggregator extends AbstractFileWriter {
                         chunk.setIndex(newLineInd + 1);
                         wasRootIndexAppended = false;
                     } else {
-                        outputNIOChannel.write(buffer);
-                        chunk.setIndex(chunk.size() - 1);
+                        outputChannel.write(chunk.substring(chunk.size()));
+                        chunk.setIndex(chunk.size());
                     }
                 }
+                buffer.clear();
             }
         } catch (IOException e) {
             throw new TransformerException("Failed to create temporary file in format: '<group_num>" +
