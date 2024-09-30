@@ -100,10 +100,18 @@ public class ValidLineFilter extends AbstractFileWriter {
                         case DELIMITER -> {
                             isLineCorrect = chunk.skipValueWrapper();
                             state = ColumnState.VALUE_WRAPPER_FIRST;
+                            if (!isLineCorrect) {
+                                isLineCorrect = chunk.skipColumnDelimiter();
+                                state = ColumnState.DELIMITER;
+                            }
                         }
                         case VALUE_WRAPPER_FIRST -> {
                             isLineCorrect = chunk.skipDigits();
                             state = ColumnState.VALUE;
+                            if (!isLineCorrect) {
+                                isLineCorrect = chunk.skipValueWrapper();
+                                state = ColumnState.VALUE_WRAPPER_SECOND;
+                            }
                         }
                         case VALUE_WRAPPER_SECOND -> {
                             isLineCorrect = chunk.skipColumnDelimiter();
