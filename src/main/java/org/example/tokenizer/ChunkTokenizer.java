@@ -153,7 +153,19 @@ public class ChunkTokenizer {
     }
 
     public int indexOf(Predicate<Character> predicate) {
-        return IntStream.range(0, s.length())
+        return indexOf(predicate, 0);
+    }
+
+    public int indexOfNewLineFromCurrentIndex() {
+        return indexOf(this::isNewLine, curInd);
+    }
+
+    public int indexOfFromCurrentIndex(Predicate<Character> predicate) {
+        return indexOf(predicate, curInd);
+    }
+
+    private int indexOf(Predicate<Character> predicate, int startIndex) {
+        return IntStream.range(startIndex, s.length())
                 .filter(i -> predicate.test(s.charAt(i)))
                 .findFirst()
                 .orElse(-1);
