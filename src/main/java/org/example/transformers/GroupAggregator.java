@@ -91,6 +91,7 @@ public class GroupAggregator extends AbstractFileWriter {
             var buffer = ByteBuffer.allocate(BUFFER_SIZE);
             int prevGroup = -1;
             int groupToPrint = 1;
+            String groupPart = "";
 
             while ((bytesRead = inputChannel.read(buffer)) != -1) {
                 var chunk = new ChunkTokenizer(new String(buffer.array(), 0, bytesRead));
@@ -101,7 +102,13 @@ public class GroupAggregator extends AbstractFileWriter {
                     var bothAreFound = (delimiterIndex != -1) && (newLineIndex != -1);
 
                     if ((delimiterIndex != -1 && newLineIndex == -1) || (bothAreFound && delimiterIndex < newLineIndex)) {
-                        var group = Integer.parseInt(chunk.substring(delimiterIndex));
+                        int group;
+                        if (!groupPart.isEmpty()) {
+                            group = Integer.parseInt(groupPart + chunk.substring(delimiterIndex));
+                            groupPart = "";
+                        } else {
+                            group = Integer.parseInt(chunk.substring(delimiterIndex));
+                        }
                         chunk.setIndex(delimiterIndex + 1);
 
                         if (group != prevGroup) {
@@ -112,6 +119,10 @@ public class GroupAggregator extends AbstractFileWriter {
                     } else if ((newLineIndex != -1 && delimiterIndex == -1) || (bothAreFound && newLineIndex < delimiterIndex)) {
                         outputChannel.write(chunk.substring(newLineIndex + 1));
                         chunk.setIndex(newLineIndex + 1);
+                        if (chunk.indexOfFromCurrentIndex(c -> c == TMP_DELIMITER.charAt(0)) == -1) {
+                            groupPart = chunk.substring(chunk.size());
+                            chunk.setIndex(chunk.size());
+                        }
                     } else {
                         outputChannel.write(chunk.substring(chunk.size()));
                         chunk.setIndex(chunk.size() - 1);
