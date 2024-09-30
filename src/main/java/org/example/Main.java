@@ -11,9 +11,13 @@ import java.nio.file.Path;
 
 public class Main {
     public static void main(String[] args) throws IOException {
+        if (args.length != 1) {
+            throw new IllegalArgumentException("Expected 1 argument containing path to input file.");
+        }
+
         var correctFileWriterOutputPath = Path.of("src", "main", "resources", "output_correct_writer.txt");
         var correctFileWriter = new ValidLineFilter(
-                Path.of("src", "main", "resources", "lng-4.txt"),
+                Path.of(args[0]),
                 correctFileWriterOutputPath
         );
         correctFileWriter.filter();
