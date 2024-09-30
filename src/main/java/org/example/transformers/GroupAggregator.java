@@ -1,6 +1,7 @@
 package org.example.transformers;
 
 import org.example.dto.FileInfo;
+import org.example.exceptions.TokenizerException;
 import org.example.exceptions.TransformerException;
 import org.example.external.sort.ExternalFileSorter;
 import org.example.tokenizer.ChunkTokenizer;
@@ -109,6 +110,8 @@ public class GroupAggregator extends AbstractFileWriter {
             }
         } catch (IOException e) {
             throw new TransformerException("Final stage of group aggregation failed.", sortedRootLine, resultPath, e);
+        } catch (TokenizerException e) {
+            throw new TransformerException("Failed to parse file: " + sortedRootLine, e);
         }
 
         return resultPath;

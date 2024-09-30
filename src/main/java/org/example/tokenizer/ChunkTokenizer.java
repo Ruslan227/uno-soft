@@ -1,5 +1,7 @@
 package org.example.tokenizer;
 
+import org.example.exceptions.TokenizerException;
+
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
 
@@ -28,7 +30,7 @@ public class ChunkTokenizer {
 
     public void setIndex(int index) {
         if (index < 0) {
-            throw new IllegalArgumentException("Index is out of bounds [0; " + s.length() + "). Index: " + index);
+            throw new TokenizerException("Index is out of bounds [0; " + s.length() + "). Index: " + index);
         }
         curInd = min(size() - 1, index);
     }
@@ -43,7 +45,7 @@ public class ChunkTokenizer {
 
     public String substring(int to) {
         if (to < 0 || to > s.length()) {
-            throw new IllegalArgumentException("Border 'to' must be inside [0; " + s.length() + "] interval. 'to'=" + to);
+            throw new TokenizerException("Border 'to' must be inside [0; " + s.length() + "] interval. 'to'=" + to);
         }
         return s.substring(curInd, to);
     }
