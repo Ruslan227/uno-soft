@@ -13,6 +13,6 @@ public class TransformerException extends IOException {
     }
 
     public TransformerException(String message, Path input, Path output, Throwable cause) {
-        this(message + " Reading " + input + " and writing to output " + output, cause);
+        this(message + " Reading " + input.toString() + " and writing to output " + output.toString(), cause);
     }
 }
