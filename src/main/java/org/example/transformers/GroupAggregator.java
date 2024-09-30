@@ -175,7 +175,7 @@ public class GroupAggregator extends AbstractFileWriter {
             while ((bytesRead = inputChannel.read(buffer)) != -1) {
                 var chunk = new ChunkTokenizer(new String(buffer.array(), 0, bytesRead));
 
-                while (chunk.hasRemainingCharacters() && ind < parent.length) {
+                while (chunk.hasRemainingCharacters() && ind <= parent.length) {
                     var newLineInd = chunk.indexOfNewLineFromCurrentIndex();
 
                     if (!wasRootIndexAppended) {
