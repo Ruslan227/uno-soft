@@ -32,6 +32,11 @@ public class ValidLineFilter extends AbstractFileWriter {
         SKIP_UNTIL_NEW_LINE
     }
 
+    @Override
+    public Path transform(Path input) throws TransformerException {
+        return filter();
+    }
+
     private Optional<ColumnState> stateByFirstLexeme(ChunkTokenizer chunk) {
         chunk.skipWhitespaceIfPresent();
         var curCode = chunk.get();
@@ -60,7 +65,7 @@ public class ValidLineFilter extends AbstractFileWriter {
         return Optional.of(stateResult);
     }
 
-    public void writeOutput() throws TransformerException {
+    public Path filter() throws TransformerException {
         try (RandomAccessFile raf = new RandomAccessFile(inputFilePath.toString(), "r");
              FileOutputStream fos = new FileOutputStream(outputFilePath.toString());
              FileChannel fileWriterChannel = fos.getChannel()) {
@@ -140,6 +145,8 @@ public class ValidLineFilter extends AbstractFileWriter {
         } catch (IOException e) {
             throw new TransformerException("Failed to filter input file " + inputFilePath, e);
         }
+
+        return outputFilePath;
     }
 
     private boolean isEOF(int bytesRead, int bufferLen, ChunkTokenizer chunk) {

@@ -21,7 +21,12 @@ public class MatrixTransposer extends AbstractFileWriter {
         filePointers = new long[fileInfo.validLinesAmount()];
     }
 
-    public void transpose() throws TransformerException {
+    @Override
+    public Path transform(Path input) throws TransformerException {
+        return transpose();
+    }
+
+    public Path transpose() throws TransformerException {
         saveFilePointers();
 
         try (RandomAccessFile raf = new RandomAccessFile(inputFilePath.toString(), "r");
@@ -81,6 +86,8 @@ public class MatrixTransposer extends AbstractFileWriter {
         } catch (IOException e) {
             throw new TransformerException("Failed to transpose the matrix. File: " + inputFilePath, e);
         }
+
+        return outputFilePath;
     }
 
     private void saveFilePointers() throws TransformerException {

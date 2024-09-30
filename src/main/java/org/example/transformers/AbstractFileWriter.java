@@ -4,7 +4,7 @@ import org.example.tokenizer.ChunkTokenizer;
 
 import java.nio.file.Path;
 
-public abstract class AbstractFileWriter {
+public abstract class AbstractFileWriter implements FileTransformer {
     protected static final int BUFFER_SIZE = 256 * 1024 * 1024; // 256 Mb
     protected final Path inputFilePath;
     protected final Path outputFilePath;

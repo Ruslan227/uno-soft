@@ -46,6 +46,11 @@ public class GroupAggregator extends AbstractFileWriter {
         this.duplicateRemovalInputPath = duplicateRemovalInputPath;
     }
 
+    @Override
+    public Path transform(Path input) throws TransformerException {
+        return aggregateGroups();
+    }
+
     public Path aggregateGroups() throws TransformerException {
         computeDSU();
         makeParentsToBeRoots();
