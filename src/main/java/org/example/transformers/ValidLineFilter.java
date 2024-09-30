@@ -5,7 +5,6 @@ import org.example.exceptions.TransformerException;
 import org.example.tokenizer.ChunkTokenizer;
 
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
@@ -14,6 +13,7 @@ import java.nio.file.Path;
 import java.util.Optional;
 
 import static java.lang.Math.max;
+import static java.nio.file.StandardOpenOption.*;
 
 public class ValidLineFilter extends AbstractFileWriter {
     private int validLinesAmount = 0;
@@ -67,8 +67,7 @@ public class ValidLineFilter extends AbstractFileWriter {
 
     public Path filter() throws TransformerException {
         try (RandomAccessFile raf = new RandomAccessFile(inputFilePath.toString(), "r");
-             FileOutputStream fos = new FileOutputStream(outputFilePath.toString());
-             FileChannel fileWriterChannel = fos.getChannel()) {
+             FileChannel fileWriterChannel = FileChannel.open(outputFilePath, TRUNCATE_EXISTING, WRITE, CREATE)) {
 
             long curLineStart = raf.getFilePointer();
             var buffer = new byte[BUFFER_SIZE];

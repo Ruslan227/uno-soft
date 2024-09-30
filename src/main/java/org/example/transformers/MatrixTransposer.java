@@ -4,12 +4,15 @@ import org.example.dto.FileInfo;
 import org.example.exceptions.TransformerException;
 import org.example.tokenizer.ChunkTokenizer;
 
-import java.io.*;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.nio.file.StandardOpenOption.*;
 
 public class MatrixTransposer extends AbstractFileWriter {
     private final FileInfo fileInfo;
@@ -30,8 +33,7 @@ public class MatrixTransposer extends AbstractFileWriter {
         saveFilePointers();
 
         try (RandomAccessFile raf = new RandomAccessFile(inputFilePath.toString(), "r");
-             FileOutputStream fos = new FileOutputStream(outputFilePath.toString());
-             FileChannel fileWriterChannel = fos.getChannel()) {
+             FileChannel fileWriterChannel = FileChannel.open(outputFilePath, TRUNCATE_EXISTING, WRITE, CREATE)) {
 
             var buffer = new byte[BUFFER_SIZE];
             var columnPartBuffer = ByteBuffer.allocate(BUFFER_SIZE);
@@ -82,7 +84,7 @@ public class MatrixTransposer extends AbstractFileWriter {
                 fileWriterChannel.write(ByteBuffer.wrap(new byte[]{'\n'}));
             }
         } catch (FileNotFoundException e) {
-            throw new TransformerException("Failed to find file when transposing matrix.", inputFilePath,outputFilePath,e);
+            throw new TransformerException("Failed to find file when transposing matrix.", inputFilePath, outputFilePath, e);
         } catch (IOException e) {
             throw new TransformerException("Failed to transpose the matrix. File: " + inputFilePath, e);
         }
@@ -91,8 +93,7 @@ public class MatrixTransposer extends AbstractFileWriter {
     }
 
     private void saveFilePointers() throws TransformerException {
-        try (FileInputStream fis = new FileInputStream(inputFilePath.toString());
-             FileChannel fileReaderChannel = fis.getChannel()) {
+        try (FileChannel fileReaderChannel = FileChannel.open(inputFilePath, READ)) {
 
             filePointers[0] = 0;
             int lineInd = 1;
