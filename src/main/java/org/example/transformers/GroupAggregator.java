@@ -1,6 +1,7 @@
 package org.example.transformers;
 
 import org.example.dto.FileInfo;
+import org.example.exceptions.ExternalSortException;
 import org.example.exceptions.TokenizerException;
 import org.example.exceptions.TransformerException;
 import org.example.external.sort.ExternalFileSorter;
@@ -50,7 +51,13 @@ public class GroupAggregator extends AbstractFileWriter {
         makeParentsToBeRoots();
         var rootLinePath = createTemporaryFileRootLine();
         final var sortResultPath = Paths.get("").toAbsolutePath().resolve("root_line_sorted.txt");
-        ExternalFileSorter.sortByGroup(rootLinePath, sortResultPath, TMP_DELIMITER, size);
+
+        try {
+            ExternalFileSorter.sortByGroup(rootLinePath, sortResultPath, TMP_DELIMITER, size);
+        } catch (ExternalSortException e) {
+            throw new TransformerException("Failed to sort file of format: <group>" + TMP_DELIMITER + "<line>.", e);
+        }
+
         var groupsAmount = countGroupAmountWithSizeMoreThanOne();
         var output = writeResultToOutputFile(sortResultPath, groupsAmount);
 
@@ -246,8 +253,6 @@ public class GroupAggregator extends AbstractFileWriter {
                 }
                 buffer.clear();
             }
-
-
         } catch (IOException e) {
             throw new TransformerException("Failed while merging groups.", inputFilePath, tmpFilePath, e);
         } finally {

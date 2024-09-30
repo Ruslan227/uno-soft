@@ -1,6 +1,7 @@
 package org.example.external.sort;
 
 import com.google.code.externalsorting.ExternalSort;
+import org.example.exceptions.ExternalSortException;
 import org.example.tokenizer.ChunkTokenizer;
 
 import java.io.BufferedReader;
@@ -17,11 +18,11 @@ public class ExternalFileSorter {
     private static final long MAX_MEMORY_USAGE = 256 * 1024 * 1024; // 256 Mb
     private static final int MAX_TMP_FILES = 500;
 
-    public static void removeDuplicates(Path inputFilePath, Path outputFilePath) {
+    public static void removeDuplicates(Path inputFilePath, Path outputFilePath) throws ExternalSortException {
         abstractSort(inputFilePath, outputFilePath, Comparator.naturalOrder(), true);
     }
 
-    public static void sortBySecondColumn(Path inputFilePath, Path outputFilePath) {
+    public static void sortBySecondColumn(Path inputFilePath, Path outputFilePath) throws ExternalSortException {
         Comparator<String> cmp = (s1, s2) -> {
             var columnDelimiter = String.valueOf(ChunkTokenizer.getColumnDelimiter());
             var column1 = s1.split(columnDelimiter, 2)[1];
@@ -31,7 +32,7 @@ public class ExternalFileSorter {
         abstractSort(inputFilePath, outputFilePath, cmp, false);
     }
 
-    public static void sortByGroup(Path inputFilePath, Path outputFilePath, String delimiter, int[] size) {
+    public static void sortByGroup(Path inputFilePath, Path outputFilePath, String delimiter, int[] size) throws ExternalSortException {
         Comparator<String> cmp = (s1, s2) -> {
             var root1 = Integer.parseInt(s1.split(delimiter, 2)[0]);
             var root2 = Integer.parseInt(s2.split(delimiter, 2)[0]);
@@ -44,7 +45,7 @@ public class ExternalFileSorter {
         abstractSort(inputFilePath, outputFilePath, cmp, false);
     }
 
-    private static void abstractSort(Path inputFilePath, Path outputFilePath, Comparator<String> cmp, boolean distinct) {
+    private static void abstractSort(Path inputFilePath, Path outputFilePath, Comparator<String> cmp, boolean distinct) throws ExternalSortException {
         try (var reader = new BufferedReader(new FileReader(inputFilePath.toFile()))) {
             var inputFile = inputFilePath.toFile();
             var outputFile = outputFilePath.toFile();
@@ -65,7 +66,7 @@ public class ExternalFileSorter {
 
             ExternalSort.mergeSortedFiles(sortedFiles, outputFile, cmp, UTF_8, distinct);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new ExternalSortException("Failed while sorting file.", inputFilePath, e);
         }
     }
 }
