@@ -32,7 +32,7 @@ public class ChunkTokenizer {
         if (index < 0) {
             throw new TokenizerException("Index is out of bounds [0; " + s.length() + "). Index: " + index);
         }
-        curInd = min(size() - 1, index);
+        curInd = min(size(), index);
     }
 
     public int getCurrentIndex() {
