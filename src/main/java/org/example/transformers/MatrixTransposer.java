@@ -11,7 +11,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardOpenOption.*;
 
 public class MatrixTransposer extends AbstractFileWriter {
@@ -102,14 +101,12 @@ public class MatrixTransposer extends AbstractFileWriter {
             int readBytes;
 
             while ((readBytes = fileReaderChannel.read(buffer)) > 0) {
-                buffer.flip();
-
-                ChunkTokenizer chunk = new ChunkTokenizer(UTF_8.decode(buffer).toString());
+                ChunkTokenizer chunk = new ChunkTokenizer(new String(buffer.array(), 0, readBytes));
 
                 while (chunk.hasRemainingCharacters()) {
                     int newLineInd = chunk.skipUtilNewValidLine();
 
-                    if (newLineInd != -1 && chunk.hasRemainingCharacters()) {
+                    if (newLineInd != -1 && lineInd < filePointers.length) {
                         filePointers[lineInd] = seekIndexByBufferIndex(
                                 fileReaderChannel.position(),
                                 fileReaderChannel.size(),
