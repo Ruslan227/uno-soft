@@ -32,15 +32,16 @@ public class ExternalFileSorter {
         abstractSort(inputFilePath, outputFilePath, cmp, false);
     }
 
-    public static void sortByGroup(Path inputFilePath, Path outputFilePath, String delimiter, int[] size) throws ExternalSortException {
+    public static void sortByGroupSize(Path inputFilePath, Path outputFilePath, String delimiter, int[] size) throws ExternalSortException {
         Comparator<String> cmp = (s1, s2) -> {
             var root1 = Integer.parseInt(s1.split(delimiter, 2)[0]);
             var root2 = Integer.parseInt(s2.split(delimiter, 2)[0]);
-            if (root1 != root2) {
-                return size[root2] - size[root1];
-            } else {
-                return 0;
+
+            var res = Integer.compare(size[root2], size[root1]);
+            if (res == 0) {
+                return Integer.compare(root1, root2);
             }
+            return res;
         };
         abstractSort(inputFilePath, outputFilePath, cmp, false);
     }

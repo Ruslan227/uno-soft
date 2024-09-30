@@ -59,7 +59,7 @@ public class GroupAggregator extends AbstractFileWriter {
         final var sortResultPath = Paths.get("").toAbsolutePath().resolve("root_line_sorted.txt");
 
         try {
-            ExternalFileSorter.sortByGroup(rootLinePath, sortResultPath, TMP_DELIMITER, size);
+            ExternalFileSorter.sortByGroupSize(rootLinePath, sortResultPath, TMP_DELIMITER, size);
         } catch (ExternalSortException e) {
             throw new TransformerException("Failed to sort file of format: <group>" + TMP_DELIMITER + "<line>.", e);
         }
